@@ -18,12 +18,17 @@ const webStorage: Storage = {
 // Native storage implementation
 let nativeStorage: Storage | null = null;
 if (Platform.OS !== 'web') {
-  const SecureStore = require('expo-secure-store');
-  nativeStorage = {
-    getItem: SecureStore.getItemAsync,
-    setItem: SecureStore.setItemAsync,
-    deleteItem: SecureStore.deleteItemAsync,
-  };
+  try {
+    const SecureStore = require('expo-secure-store');
+    nativeStorage = {
+      getItem: SecureStore.getItemAsync,
+      setItem: SecureStore.setItemAsync,
+      deleteItem: SecureStore.deleteItemAsync,
+    };
+  } catch (error) {
+    console.warn('SecureStore not available, falling back to web storage');
+    nativeStorage = webStorage;
+  }
 }
 
 // User interface
@@ -54,14 +59,20 @@ interface SignupData {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// API configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 
-  (Platform.OS === 'web' ? 'http://localhost:5000/api' : 'http://192.168.56.1:5000/api');
+// API configuration - Updated to use correct IP and handle both web and native
+const getApiBaseUrl = () => {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:5000/api';
+  }
+  // For native, use your computer's IP address
+  // Replace this with your actual IP address
+  return 'http://192.168.1.100:5000/api'; // Update this IP to match your computer's IP
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const storage = Platform.OS === 'web' ? webStorage : nativeStorage!;
+  const storage = Platform.OS === 'web' ? webStorage : (nativeStorage || webStorage);
 
   useEffect(() => {
     loadStoredAuth();
@@ -75,6 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      const API_BASE_URL = getApiBaseUrl();
       const res = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -115,6 +127,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
+      const API_BASE_URL = getApiBaseUrl();
+      console.log('Attempting login to:', `${API_BASE_URL}/auth/login`);
+
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -126,7 +141,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }),
       });
 
+      console.log('Login response status:', response.status);
       const data = await response.json();
+      console.log('Login response data:', data);
 
       if (!response.ok) {
         // More specific error handling
@@ -135,6 +152,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             'Login Failed',
             data.message || 'Invalid email or password'
           );
+        } else if (response.status >= 500) {
+          Alert.alert('Server Error', 'Please try again later');
         } else {
           Alert.alert('Error', data.message || 'Login failed');
         }
@@ -147,12 +166,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return true;
       }
 
+      Alert.alert('Error', 'Login failed. Please try again.');
       return false;
     } catch (err) {
       console.error('Login error:', err);
       Alert.alert(
         'Network Error', 
-        'Could not connect to the server. Please check your internet connection.'
+        'Could not connect to the server. Please check your internet connection and try again.'
       );
       return false;
     }
@@ -166,6 +186,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
+      if (data.password.length < 6) {
+        Alert.alert('Error', 'Password must be at least 6 characters long');
+        return false;
+      }
+
+      const API_BASE_URL = getApiBaseUrl();
+      console.log('Attempting signup to:', `${API_BASE_URL}/auth/register`);
+
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
@@ -174,30 +202,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({
           ...data,
           email: data.email.trim().toLowerCase(),
-          password: data.password.trim()
+          password: data.password.trim(),
+          name: data.name.trim()
         }),
       });
 
+      console.log('Signup response status:', response.status);
       const responseData = await response.json();
+      console.log('Signup response data:', responseData);
 
       if (!response.ok) {
-        Alert.alert(
-          'Signup Failed',
-          responseData.message || 'Could not create account'
-        );
+        if (response.status === 409) {
+          Alert.alert(
+            'Account Exists',
+            'An account with this email already exists. Please try logging in instead.'
+          );
+        } else if (response.status >= 500) {
+          Alert.alert('Server Error', 'Please try again later');
+        } else {
+          Alert.alert(
+            'Signup Failed',
+            responseData.message || 'Could not create account'
+          );
+        }
         return false;
       }
 
       if (responseData.status === 'success') {
         await storage.setItem('auth_token', responseData.data.token);
         setUser(responseData.data.user);
+        Alert.alert('Success', 'Account created successfully!');
         return true;
       }
 
+      Alert.alert('Error', 'Signup failed. Please try again.');
       return false;
     } catch (err) {
       console.error('Signup error:', err);
-      Alert.alert('Network Error', 'Please check your connection.');
+      Alert.alert('Network Error', 'Please check your connection and try again.');
       return false;
     }
   };
@@ -206,13 +248,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const token = await storage.getItem('auth_token');
       if (token) {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const API_BASE_URL = getApiBaseUrl();
+        try {
+          await fetch(`${API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        } catch (logoutError) {
+          console.error('Logout API error:', logoutError);
+          // Continue with local logout even if API call fails
+        }
       }
     } catch (err) {
       console.error('Logout error:', err);
