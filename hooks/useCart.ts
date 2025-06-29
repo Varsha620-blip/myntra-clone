@@ -1,12 +1,30 @@
 import { useState, useEffect } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { Platform, Alert } from 'react-native';
 import { CartItem, Product } from '@/types';
 
-// Use your actual backend URL
+// Platform-specific storage
+const getStorageValue = async (key: string): Promise<string | null> => {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem(key);
+  } else {
+    const SecureStore = await import('expo-secure-store');
+    return await SecureStore.getItemAsync(key);
+  }
+};
+
+const setStorageValue = async (key: string, value: string): Promise<void> => {
+  if (Platform.OS === 'web') {
+    localStorage.setItem(key, value);
+  } else {
+    const SecureStore = await import('expo-secure-store');
+    await SecureStore.setItemAsync(key, value);
+  }
+};
+
+// Standardized API base URL
 const API_BASE_URL = Platform.OS === 'web' 
   ? 'http://localhost:5000/api' 
-  : 'http://192.168.1.100:5000/api'; // Replace with your actual IP
+  : 'http://192.168.1.100:5000/api';
 
 export function useCart() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -18,7 +36,7 @@ export function useCart() {
   }, []);
 
   const getAuthHeaders = async () => {
-    const token = await SecureStore.getItemAsync('auth_token');
+    const token = await getStorageValue('auth_token');
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',

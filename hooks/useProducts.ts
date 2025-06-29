@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Product, FilterOptions } from '@/types';
 
-// Use your actual backend URL
+// Standardized API base URL
 const API_BASE_URL = Platform.OS === 'web' 
   ? 'http://localhost:5000/api' 
-  : 'http://192.168.56.1:5000/api'; // Replace with your actual IP
+  : 'http://192.168.1.100:5000/api';
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
