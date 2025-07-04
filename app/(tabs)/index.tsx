@@ -9,6 +9,7 @@ import {
   FlatList,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -36,18 +37,21 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading: authLoading } = useAuth();
   const { recentlyViewed } = useRecentlyViewed();
   const { featuredProducts, fetchFeaturedProducts, searchProducts } = useProducts();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Don't redirect immediately, wait for auth to load
+    if (!authLoading && !isAuthenticated) {
       router.replace('/(auth)/login');
       return;
     }
 
-    loadInitialData();
-  }, [isAuthenticated]);
+    if (isAuthenticated) {
+      loadInitialData();
+    }
+  }, [isAuthenticated, authLoading]);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -77,7 +81,7 @@ export default function HomeScreen() {
   const renderCategoryCard = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.categoryCard}
-      onPress={() => router.push(`/categories/${item.id}`)} // Use item.id instead of item.name.toLowerCase()
+      onPress={() => router.push(`/categories/${item.id}`)}
     >
       <Text style={styles.categoryIcon}>{item.icon}</Text>
       <Text style={styles.categoryName}>{item.name}</Text>
@@ -88,6 +92,19 @@ export default function HomeScreen() {
     <ProductCard product={item} width={160} />
   );
 
+  // Show loading screen while auth is loading
+  if (authLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E91E63" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Don't render anything if not authenticated (will redirect)
   if (!isAuthenticated) {
     return null;
   }
@@ -193,6 +210,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#666',
+    marginTop: 16,
   },
   header: {
     padding: 20,

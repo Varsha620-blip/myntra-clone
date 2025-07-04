@@ -59,13 +59,13 @@ interface SignupData {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// API configuration - Updated to use correct IP and handle both web and native
+// API configuration - Updated to handle both web and native
 const getApiBaseUrl = () => {
   if (Platform.OS === 'web') {
     return 'http://localhost:5000/api';
   }
   // For native, use your computer's IP address
-  // Replace this with your actual IP address
+  // You need to replace this with your actual IP address
   return 'http://192.168.1.100:5000/api'; // Update this IP to match your computer's IP
 };
 
@@ -87,6 +87,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const API_BASE_URL = getApiBaseUrl();
+      console.log('Loading stored auth from:', `${API_BASE_URL}/auth/me`);
+      
       const res = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -94,13 +96,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
 
+      console.log('Auth check response status:', res.status);
+
       if (!res.ok) {
-        throw new Error('Failed to fetch user data');
+        console.log('Auth check failed, removing token');
+        await storage.deleteItem('auth_token');
+        setUser(null);
+        setLoading(false);
+        return;
       }
 
       const data = await res.json();
+      console.log('Auth check response:', data);
 
-      if (data.status === 'success') {
+      if (data.status === 'success' && data.data?.user) {
         setUser(data.data.user);
       } else {
         await storage.deleteItem('auth_token');
@@ -160,7 +169,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      if (data.status === 'success') {
+      if (data.status === 'success' && data.data?.token && data.data?.user) {
         await storage.setItem('auth_token', data.data.token);
         setUser(data.data.user);
         return true;
@@ -228,7 +237,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      if (responseData.status === 'success') {
+      if (responseData.status === 'success' && responseData.data?.token && responseData.data?.user) {
         await storage.setItem('auth_token', responseData.data.token);
         setUser(responseData.data.user);
         Alert.alert('Success', 'Account created successfully!');

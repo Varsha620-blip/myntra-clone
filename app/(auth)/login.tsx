@@ -40,6 +40,7 @@ export default function LoginScreen() {
     try {
       const success = await login(email.trim(), password.trim());
       if (success) {
+        // Navigation will be handled by the auth state change in the home screen
         router.replace('/(tabs)');
       }
     } catch (error) {
