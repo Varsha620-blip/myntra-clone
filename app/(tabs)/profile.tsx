@@ -10,29 +10,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { User, ShoppingBag, Heart, Settings, CircleHelp as HelpCircle, LogOut, ChevronRight } from 'lucide-react-native';
-import { useAuth } from '@/hooks/userAuth';
+import { User, ShoppingBag, Heart, Settings, CircleHelp as HelpCircle, Star, ChevronRight, Gift, CreditCard } from 'lucide-react-native';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
-          },
-        },
-      ]
-    );
+  const handleFeaturePress = (feature: string) => {
+    Alert.alert(feature, `${feature} feature coming soon!`);
   };
 
   const menuItems = [
@@ -40,25 +24,43 @@ export default function ProfileScreen() {
       icon: ShoppingBag,
       title: 'My Orders',
       subtitle: 'View your order history',
-      onPress: () => Alert.alert('Orders', 'Orders feature coming soon!'),
+      onPress: () => handleFeaturePress('My Orders'),
     },
     {
       icon: Heart,
       title: 'Wishlist',
       subtitle: 'Your saved items',
-      onPress: () => Alert.alert('Wishlist', 'Wishlist feature coming soon!'),
+      onPress: () => handleFeaturePress('Wishlist'),
+    },
+    {
+      icon: CreditCard,
+      title: 'Payment Methods',
+      subtitle: 'Manage your cards and wallets',
+      onPress: () => handleFeaturePress('Payment Methods'),
+    },
+    {
+      icon: Gift,
+      title: 'Coupons & Offers',
+      subtitle: 'Available discounts',
+      onPress: () => handleFeaturePress('Coupons & Offers'),
+    },
+    {
+      icon: Star,
+      title: 'Reviews & Ratings',
+      subtitle: 'Your product reviews',
+      onPress: () => handleFeaturePress('Reviews & Ratings'),
     },
     {
       icon: Settings,
       title: 'Settings',
       subtitle: 'Account and app settings',
-      onPress: () => Alert.alert('Settings', 'Settings feature coming soon!'),
+      onPress: () => handleFeaturePress('Settings'),
     },
     {
       icon: HelpCircle,
       title: 'Help & Support',
       subtitle: 'Get help and contact us',
-      onPress: () => Alert.alert('Support', 'Support feature coming soon!'),
+      onPress: () => handleFeaturePress('Help & Support'),
     },
   ];
 
@@ -68,11 +70,32 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={{ uri: user?.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg' }}
+            source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg' }}
             style={styles.avatar}
           />
-          <Text style={styles.name}>{user?.name || 'User'}</Text>
-          <Text style={styles.email}>{user?.email || 'user@example.com'}</Text>
+          <Text style={styles.name}>Guest User</Text>
+          <Text style={styles.email}>guest@myntra.com</Text>
+          <TouchableOpacity style={styles.editProfileButton}>
+            <Text style={styles.editProfileText}>Edit Profile</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statLabel}>Orders</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>5</Text>
+            <Text style={styles.statLabel}>Wishlist</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>₹25,000</Text>
+            <Text style={styles.statLabel}>Saved</Text>
+          </View>
         </View>
 
         {/* Menu Items */}
@@ -97,11 +120,20 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut size={20} color="#E91E63" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        {/* Promotional Banner */}
+        <View style={styles.promoContainer}>
+          <Image
+            source={{ uri: 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg' }}
+            style={styles.promoBanner}
+          />
+          <View style={styles.promoOverlay}>
+            <Text style={styles.promoTitle}>Become a Member</Text>
+            <Text style={styles.promoSubtitle}>Get exclusive offers and early access</Text>
+            <TouchableOpacity style={styles.promoButton}>
+              <Text style={styles.promoButtonText}>Join Now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* App Info */}
         <View style={styles.appInfo}>
@@ -139,9 +171,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#666',
+    marginBottom: 16,
+  },
+  editProfileButton: {
+    backgroundColor: '#E91E63',
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  editProfileText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#fff',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: -20,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    paddingVertical: 20,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#666',
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#eee',
   },
   menu: {
     padding: 16,
+    marginTop: 16,
   },
   menuItem: {
     flexDirection: 'row',
@@ -181,20 +259,50 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#666',
   },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  promoContainer: {
     margin: 16,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(233, 30, 99, 0.1)',
     borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  logoutText: {
-    fontSize: 16,
+  promoBanner: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'cover',
+  },
+  promoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  promoTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  promoSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#fff',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  promoButton: {
+    backgroundColor: '#E91E63',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  promoButtonText: {
+    fontSize: 12,
     fontFamily: 'Inter-SemiBold',
-    color: '#E91E63',
-    marginLeft: 8,
+    color: '#fff',
   },
   appInfo: {
     alignItems: 'center',

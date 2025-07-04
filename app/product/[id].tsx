@@ -12,10 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Heart, Star, ShoppingBag } from 'lucide-react-native';
-import { useCart } from '@/hooks/useCart';
-import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
-import { useProducts } from '@/hooks/useProducts';
+import { ArrowLeft, Heart, Star, ShoppingBag, Share } from 'lucide-react-native';
+import { products } from '@/data/products';
 import { Product } from '@/types';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -29,11 +27,9 @@ export default function ProductDetailScreen() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
   const router = useRouter();
-  const { addToCart } = useCart();
-  const { addToRecentlyViewed } = useRecentlyViewed();
-  const { fetchProductById } = useProducts();
 
   useEffect(() => {
     loadProduct();
@@ -45,12 +41,11 @@ export default function ProductDetailScreen() {
       const productId = Array.isArray(id) ? id[0] : id;
       
       if (productId) {
-        const fetchedProduct = await fetchProductById(productId);
-        if (fetchedProduct) {
-          setProduct(fetchedProduct);
-          setSelectedSize(fetchedProduct.sizes[0] || '');
-          setSelectedColor(fetchedProduct.colors[0] || '');
-          await addToRecentlyViewed(fetchedProduct);
+        const foundProduct = products.find(p => p.id === productId);
+        if (foundProduct) {
+          setProduct(foundProduct);
+          setSelectedSize(foundProduct.sizes[0] || '');
+          setSelectedColor(foundProduct.colors[0] || '');
         } else {
           Alert.alert('Error', 'Product not found');
           router.back();
@@ -75,15 +70,27 @@ export default function ProductDetailScreen() {
 
     setAddingToCart(true);
     try {
-      const success = await addToCart(product, selectedSize, selectedColor, quantity);
-      if (success) {
+      // Simulate adding to cart
+      setTimeout(() => {
         Alert.alert('Success', 'Product added to cart!');
-      }
+        setAddingToCart(false);
+      }, 1000);
     } catch (error) {
       console.error('Error adding to cart:', error);
-    } finally {
       setAddingToCart(false);
     }
+  };
+
+  const handleWishlist = () => {
+    setIsWishlisted(!isWishlisted);
+    Alert.alert(
+      isWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist',
+      isWishlisted ? 'Product removed from your wishlist' : 'Product added to your wishlist'
+    );
+  };
+
+  const handleShare = () => {
+    Alert.alert('Share Product', 'Share functionality coming soon!');
   };
 
   if (loading) {
@@ -120,9 +127,14 @@ export default function ProductDetailScreen() {
         >
           <ArrowLeft size={24} color="#333" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerButton}>
-          <Heart size={24} color="#666" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
+            <Share size={24} color="#666" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerButton} onPress={handleWishlist}>
+            <Heart size={24} color={isWishlisted ? "#E91E63" : "#666"} fill={isWishlisted ? "#E91E63" : "none"} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -244,6 +256,23 @@ export default function ProductDetailScreen() {
             <Text style={styles.descriptionTitle}>Product Details</Text>
             <Text style={styles.description}>{product.description}</Text>
           </View>
+
+          {/* Features */}
+          <View style={styles.featuresSection}>
+            <Text style={styles.descriptionTitle}>Features</Text>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureText}>• Premium quality material</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureText}>• Comfortable fit</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureText}>• Easy care instructions</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Text style={styles.featureText}>• 30-day return policy</Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
 
@@ -318,6 +347,9 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     padding: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
   },
   imageContainer: {
     position: 'relative',
@@ -444,6 +476,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   description: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#666',
+    lineHeight: 20,
+  },
+  featuresSection: {
+    marginBottom: 24,
+  },
+  featureItem: {
+    marginBottom: 8,
+  },
+  featureText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#666',

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,29 +9,150 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Minus, Plus, Trash2, ArrowRight } from 'lucide-react-native';
-import { useCart } from '@/hooks/useCart';
-import { CartItem } from '@/types';
+import { Minus, Plus, Trash2, ArrowRight, ShoppingBag } from 'lucide-react-native';
+import { CartItem, Product } from '@/types';
+
+// Mock cart data for demo
+const mockCartItems: CartItem[] = [
+  {
+    product: {
+      id: '1',
+      name: 'Cotton Casual Shirt',
+      brand: 'ZARA',
+      price: 1299,
+      originalPrice: 1899,
+      discount: 32,
+      rating: 4.2,
+      reviewCount: 1204,
+      image: 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg',
+      images: ['https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg'],
+      category: 'Men',
+      description: 'A comfortable cotton casual shirt perfect for everyday wear.',
+      sizes: ['S', 'M', 'L', 'XL'],
+      colors: ['White', 'Blue', 'Black'],
+      inStock: true,
+      isNew: true
+    },
+    quantity: 2,
+    size: 'M',
+    color: 'Blue'
+  },
+  {
+    product: {
+      id: '2',
+      name: 'Floral Summer Dress',
+      brand: 'H&M',
+      price: 2199,
+      originalPrice: 2999,
+      discount: 27,
+      rating: 4.5,
+      reviewCount: 856,
+      image: 'https://images.pexels.com/photos/1381556/pexels-photo-1381556.jpeg',
+      images: ['https://images.pexels.com/photos/1381556/pexels-photo-1381556.jpeg'],
+      category: 'Women',
+      description: 'Beautiful floral print summer dress with flowing silhouette.',
+      sizes: ['XS', 'S', 'M', 'L'],
+      colors: ['Floral Print', 'Solid Blue'],
+      inStock: true,
+      isBestseller: true
+    },
+    quantity: 1,
+    size: 'S',
+    color: 'Floral Print'
+  }
+];
+
+const mockSavedItems: CartItem[] = [
+  {
+    product: {
+      id: '3',
+      name: 'Sports Sneakers',
+      brand: 'Nike',
+      price: 3499,
+      originalPrice: 4999,
+      discount: 30,
+      rating: 4.4,
+      reviewCount: 1890,
+      image: 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg',
+      images: ['https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg'],
+      category: 'Sports',
+      description: 'High-performance sports sneakers for running and training.',
+      sizes: ['7', '8', '9', '10', '11'],
+      colors: ['White', 'Black', 'Red'],
+      inStock: true,
+      isNew: true
+    },
+    quantity: 1,
+    size: '9',
+    color: 'White'
+  }
+];
 
 export default function CartScreen() {
-  const {
-    cartItems,
-    savedItems,
-    updateQuantity,
-    removeFromCart,
-    saveForLater,
-    moveToCart,
-    removeSavedItem,
-    getTotalPrice,
-    getTotalItems,
-  } = useCart();
+  const [cartItems, setCartItems] = useState<CartItem[]>(mockCartItems);
+  const [savedItems, setSavedItems] = useState<CartItem[]>(mockSavedItems);
+
+  const updateQuantity = (productId: string, size: string, color: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeFromCart(productId, size, color);
+      return;
+    }
+
+    setCartItems(prev => prev.map(item => 
+      item.product.id === productId && item.size === size && item.color === color
+        ? { ...item, quantity: newQuantity }
+        : item
+    ));
+  };
+
+  const removeFromCart = (productId: string, size: string, color: string) => {
+    setCartItems(prev => prev.filter(item => 
+      !(item.product.id === productId && item.size === size && item.color === color)
+    ));
+  };
+
+  const saveForLater = (productId: string, size: string, color: string) => {
+    const item = cartItems.find(item => 
+      item.product.id === productId && item.size === size && item.color === color
+    );
+    
+    if (item) {
+      setSavedItems(prev => [...prev, item]);
+      removeFromCart(productId, size, color);
+    }
+  };
+
+  const moveToCart = (productId: string, size: string, color: string) => {
+    const item = savedItems.find(item => 
+      item.product.id === productId && item.size === size && item.color === color
+    );
+    
+    if (item) {
+      setCartItems(prev => [...prev, item]);
+      removeSavedItem(productId, size, color);
+    }
+  };
+
+  const removeSavedItem = (productId: string, size: string, color: string) => {
+    setSavedItems(prev => prev.filter(item => 
+      !(item.product.id === productId && item.size === size && item.color === color)
+    ));
+  };
+
+  const getTotalPrice = () => {
+    return cartItems.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+  };
+
+  const getTotalItems = () => {
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
+  };
 
   const handleCheckout = () => {
     if (cartItems.length === 0) {
       Alert.alert('Cart Empty', 'Add some items to your cart before checkout.');
       return;
     }
-    Alert.alert('Checkout', 'Proceed to payment gateway');
+    Alert.alert('Checkout', 'Proceeding to payment gateway...');
   };
 
   const renderCartItem = (item: CartItem) => (
@@ -44,7 +165,7 @@ export default function CartScreen() {
         <Text style={styles.itemVariant}>Size: {item.size} | Color: {item.color}</Text>
         
         <View style={styles.itemFooter}>
-          <Text style={styles.itemPrice}>₹{item.product.price}</Text>
+          <Text style={styles.itemPrice}>₹{item.product.price.toLocaleString()}</Text>
           
           <View style={styles.quantityContainer}>
             <TouchableOpacity
@@ -90,7 +211,7 @@ export default function CartScreen() {
         <Text style={styles.itemBrand}>{item.product.brand}</Text>
         <Text style={styles.itemName} numberOfLines={2}>{item.product.name}</Text>
         <Text style={styles.itemVariant}>Size: {item.size} | Color: {item.color}</Text>
-        <Text style={styles.itemPrice}>₹{item.product.price}</Text>
+        <Text style={styles.itemPrice}>₹{item.product.price.toLocaleString()}</Text>
         
         <View style={styles.itemActions}>
           <TouchableOpacity
@@ -129,6 +250,7 @@ export default function CartScreen() {
           </View>
         ) : (
           <View style={styles.emptyState}>
+            <ShoppingBag size={64} color="#ccc" />
             <Text style={styles.emptyText}>Your cart is empty</Text>
             <Text style={styles.emptySubtext}>Add some items to get started</Text>
           </View>
@@ -283,6 +405,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#333',
     marginBottom: 8,
+    marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,

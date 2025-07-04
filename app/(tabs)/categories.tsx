@@ -14,7 +14,7 @@ import { Filter, ArrowUpDown } from 'lucide-react-native';
 import { ProductCard } from '@/components/ProductCard';
 import { FilterModal } from '@/components/FilterModal';
 import { SortModal } from '@/components/SortModal';
-import { useProducts } from '@/hooks/useProducts';
+import { products, brands } from '@/data/products';
 import { FilterOptions, Product } from '@/types';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -24,6 +24,7 @@ export default function CategoriesScreen() {
   const [showSortModal, setShowSortModal] = useState(false);
   const [selectedSort, setSelectedSort] = useState('popularity');
   const [refreshing, setRefreshing] = useState(false);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
   const [filters, setFilters] = useState<FilterOptions>({
     categories: [],
     priceRange: { min: 0, max: 50000 },
@@ -32,29 +33,66 @@ export default function CategoriesScreen() {
   });
 
   const router = useRouter();
-  const { products, loading, fetchProducts, fetchBrands, brands } = useProducts();
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   useEffect(() => {
     applyFiltersAndSort();
   }, [filters, selectedSort]);
 
-  const loadData = async () => {
-    await fetchBrands();
-    await applyFiltersAndSort();
-  };
+  const applyFiltersAndSort = () => {
+    let filtered = [...products];
 
-  const applyFiltersAndSort = async () => {
-    await fetchProducts(filters, selectedSort);
+    // Apply filters
+    if (filters.categories.length > 0) {
+      filtered = filtered.filter(product => 
+        filters.categories.includes(product.category)
+      );
+    }
+
+    if (filters.brands.length > 0) {
+      filtered = filtered.filter(product => 
+        filters.brands.includes(product.brand)
+      );
+    }
+
+    if (filters.priceRange.min > 0 || filters.priceRange.max < 50000) {
+      filtered = filtered.filter(product => 
+        product.price >= filters.priceRange.min && product.price <= filters.priceRange.max
+      );
+    }
+
+    if (filters.rating > 0) {
+      filtered = filtered.filter(product => product.rating >= filters.rating);
+    }
+
+    // Apply sorting
+    switch (selectedSort) {
+      case 'price-low':
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-high':
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case 'rating':
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'newest':
+        filtered.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
+        break;
+      case 'popularity':
+      default:
+        filtered.sort((a, b) => b.reviewCount - a.reviewCount);
+        break;
+    }
+
+    setFilteredProducts(filtered);
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    // Simulate refresh
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   };
 
   const getSortLabel = () => {
@@ -81,7 +119,7 @@ export default function CategoriesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>All Products</Text>
-        <Text style={styles.resultCount}>{products.length} items</Text>
+        <Text style={styles.resultCount}>{filteredProducts.length} items</Text>
       </View>
 
       {/* Filter and Sort Bar */}
@@ -115,13 +153,9 @@ export default function CategoriesScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {loading && products.length === 0 ? (
-          <View style={styles.loadingState}>
-            <Text style={styles.loadingText}>Loading products...</Text>
-          </View>
-        ) : products.length > 0 ? (
+        {filteredProducts.length > 0 ? (
           <View style={styles.productsGrid}>
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -228,17 +262,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     justifyContent: 'space-between',
-  },
-  loadingState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#666',
   },
   emptyState: {
     flex: 1,

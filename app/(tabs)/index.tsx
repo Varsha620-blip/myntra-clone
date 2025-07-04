@@ -9,15 +9,13 @@ import {
   FlatList,
   Dimensions,
   RefreshControl,
-  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Search, Filter, ArrowRight } from 'lucide-react-native';
 import { ProductCard } from '@/components/ProductCard';
-import { useAuth } from '@/hooks/userAuth';
-import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
-import { useProducts } from '@/hooks/useProducts';
+import { products } from '@/data/products';
 import { Product } from '@/types';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -35,23 +33,13 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   
   const router = useRouter();
-  const { isAuthenticated, user, loading: authLoading } = useAuth();
-  const { recentlyViewed } = useRecentlyViewed();
-  const { featuredProducts, fetchFeaturedProducts, searchProducts } = useProducts();
 
   useEffect(() => {
-    // Don't redirect immediately, wait for auth to load
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/(auth)/login');
-      return;
-    }
-
-    if (isAuthenticated) {
-      loadInitialData();
-    }
-  }, [isAuthenticated, authLoading]);
+    loadInitialData();
+  }, []);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -62,12 +50,18 @@ export default function HomeScreen() {
   }, [searchQuery]);
 
   const loadInitialData = async () => {
-    await fetchFeaturedProducts();
+    // Load featured products (first 8 products)
+    const featured = products.slice(0, 8);
+    setFeaturedProducts(featured);
   };
 
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (searchQuery.trim()) {
-      const results = await searchProducts(searchQuery.trim());
+      const results = products.filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchQuery.toLowerCase())
+      );
       setSearchResults(results);
     }
   };
@@ -88,27 +82,6 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  const renderRecentlyViewedItem = ({ item }: { item: Product }) => (
-    <ProductCard product={item} width={160} />
-  );
-
-  // Show loading screen while auth is loading
-  if (authLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#E91E63" />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Don't render anything if not authenticated (will redirect)
-  if (!isAuthenticated) {
-    return null;
-  }
-
   const displayProducts = searchQuery.trim() ? searchResults : featuredProducts;
 
   return (
@@ -123,9 +96,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <Text style={styles.logo}>Myntra</Text>
           <Text style={styles.subtitle}>Fashion & Lifestyle</Text>
-          {user && (
-            <Text style={styles.welcomeText}>Welcome back, {user.name}!</Text>
-          )}
+          <Text style={styles.welcomeText}>Discover amazing fashion!</Text>
         </View>
 
         {/* Search Bar */}
@@ -160,21 +131,6 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Recently Viewed */}
-        {recentlyViewed.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recently Viewed</Text>
-            <FlatList
-              data={recentlyViewed}
-              renderItem={renderRecentlyViewedItem}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.recentlyViewedList}
-            />
-          </View>
-        )}
-
         {/* Featured Products / Search Results */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
@@ -201,6 +157,33 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {/* Promotional Banner */}
+        <View style={styles.promoSection}>
+          <Image
+            source={{ uri: 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg' }}
+            style={styles.promoBanner}
+          />
+          <View style={styles.promoOverlay}>
+            <Text style={styles.promoTitle}>Summer Sale</Text>
+            <Text style={styles.promoSubtitle}>Up to 70% Off</Text>
+            <TouchableOpacity style={styles.promoButton}>
+              <Text style={styles.promoButtonText}>Shop Now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Trending Brands */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Trending Brands</Text>
+          <View style={styles.brandsGrid}>
+            {['ZARA', 'H&M', 'Nike', 'Levis'].map((brand) => (
+              <TouchableOpacity key={brand} style={styles.brandCard}>
+                <Text style={styles.brandName}>{brand}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -210,17 +193,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#666',
-    marginTop: 16,
   },
   header: {
     padding: 20,
@@ -303,9 +275,6 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
   },
-  recentlyViewedList: {
-    paddingHorizontal: 16,
-  },
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -328,5 +297,69 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#666',
     textAlign: 'center',
+  },
+  promoSection: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  promoBanner: {
+    width: '100%',
+    height: 150,
+    resizeMode: 'cover',
+  },
+  promoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  promoTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  promoSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#fff',
+    marginBottom: 16,
+  },
+  promoButton: {
+    backgroundColor: '#E91E63',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  promoButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#fff',
+  },
+  brandsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+  },
+  brandCard: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 16,
+    width: '48%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  brandName: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#333',
   },
 });
