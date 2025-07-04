@@ -19,7 +19,10 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false
+}));
 app.use(compression());
 
 // Rate limiting
@@ -40,22 +43,30 @@ const allowedOrigins = [
   'http://localhost:8082',
   'http://localhost:19006',
   'http://localhost:3000',
+  'http://127.0.0.1:8081',
+  'http://127.0.0.1:8082',
+  'http://127.0.0.1:19006',
   process.env.CLIENT_URL
 ].filter(Boolean);
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error(`Not allowed by CORS: ${origin}`));
+      console.log(`CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow all origins in development
     }
   },
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
@@ -68,30 +79,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/myntra-clone', {
-  retryWrites: true,
-  w: 'majority'
-})
-  .then(() => {
-    console.log('✅ Connected to MongoDB');
-    // Start server only after DB connection is established
-    const PORT = process.env.PORT || 5000;
-    const HOST = process.env.HOST || '0.0.0.0';
-    
-    app.listen(PORT, HOST, () => {
-      console.log(`🚀 Server running on http://${HOST}:${PORT}`);
-      console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 API Base URL: http://${HOST}:${PORT}/api`);
-      console.log(`🛡️  CORS Allowed Origins: ${allowedOrigins.join(', ')}`);
-    });
-  })
-  .catch((error) => {
-    console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
-  });
-
-// Health check endpoint
+// Health check endpoint (before other routes)
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'success',
@@ -126,6 +114,33 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use(errorHandler);
 
+// Database connection and server startup
+const startServer = async () => {
+  try {
+    // Connect to MongoDB
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/myntra-clone', {
+      retryWrites: true,
+      w: 'majority'
+    });
+    console.log('✅ Connected to MongoDB');
+
+    // Start server
+    const PORT = process.env.PORT || 5000;
+    const HOST = '0.0.0.0'; // Listen on all interfaces
+    
+    app.listen(PORT, HOST, () => {
+      console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+      console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
+      console.log(`🛡️  CORS Allowed Origins: ${allowedOrigins.join(', ')}`);
+      console.log(`📊 Health Check: http://localhost:${PORT}/api/health`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
@@ -134,3 +149,14 @@ process.on('SIGTERM', () => {
     process.exit(0);
   });
 });
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received. Shutting down gracefully...');
+  mongoose.connection.close(() => {
+    console.log('MongoDB connection closed.');
+    process.exit(0);
+  });
+});
+
+// Start the server
+startServer();

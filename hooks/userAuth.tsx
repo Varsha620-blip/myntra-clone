@@ -59,13 +59,14 @@ interface SignupData {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// API configuration - Updated to handle both web and native
+// API configuration - Fixed for web platform
 const getApiBaseUrl = () => {
   if (Platform.OS === 'web') {
+    // For web, use localhost
     return 'http://localhost:5000/api';
   }
-  // For native, use your computer's IP address
-  // You need to replace this with your actual IP address
+  // For native, you need to replace this with your computer's IP address
+  // Find your IP with: ipconfig (Windows) or ifconfig (Mac/Linux)
   return 'http://192.168.1.100:5000/api'; // Update this IP to match your computer's IP
 };
 
@@ -151,23 +152,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log('Login response status:', response.status);
-      const data = await response.json();
-      console.log('Login response data:', data);
-
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Login error response:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: 'Server error' };
+        }
+
         // More specific error handling
         if (response.status === 401) {
           Alert.alert(
             'Login Failed',
-            data.message || 'Invalid email or password'
+            errorData.message || 'Invalid email or password'
           );
         } else if (response.status >= 500) {
           Alert.alert('Server Error', 'Please try again later');
         } else {
-          Alert.alert('Error', data.message || 'Login failed');
+          Alert.alert('Error', errorData.message || 'Login failed');
         }
         return false;
       }
+
+      const data = await response.json();
+      console.log('Login response data:', data);
 
       if (data.status === 'success' && data.data?.token && data.data?.user) {
         await storage.setItem('auth_token', data.data.token);
@@ -217,10 +229,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log('Signup response status:', response.status);
-      const responseData = await response.json();
-      console.log('Signup response data:', responseData);
-
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Signup error response:', errorText);
+        
+        let responseData;
+        try {
+          responseData = JSON.parse(errorText);
+        } catch {
+          responseData = { message: 'Server error' };
+        }
+
         if (response.status === 409) {
           Alert.alert(
             'Account Exists',
@@ -236,6 +256,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         return false;
       }
+
+      const responseData = await response.json();
+      console.log('Signup response data:', responseData);
 
       if (responseData.status === 'success' && responseData.data?.token && responseData.data?.user) {
         await storage.setItem('auth_token', responseData.data.token);
