@@ -7,14 +7,15 @@ import {
   StyleSheet,
   Dimensions,
   RefreshControl,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Filter, ArrowUpDown } from 'lucide-react-native';
+import { Filter, ArrowUpDown, Grid, List } from 'lucide-react-native';
 import { ProductCard } from '@/components/ProductCard';
 import { FilterModal } from '@/components/FilterModal';
 import { SortModal } from '@/components/SortModal';
-import { products, brands } from '@/data/products';
+import { products, brands, categories, subcategories } from '@/data/products';
 import { FilterOptions, Product } from '@/types';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -25,6 +26,8 @@ export default function CategoriesScreen() {
   const [selectedSort, setSelectedSort] = useState('popularity');
   const [refreshing, setRefreshing] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [filters, setFilters] = useState<FilterOptions>({
     categories: [],
     priceRange: { min: 0, max: 50000 },
@@ -36,12 +39,19 @@ export default function CategoriesScreen() {
 
   useEffect(() => {
     applyFiltersAndSort();
-  }, [filters, selectedSort]);
+  }, [filters, selectedSort, selectedCategory]);
 
   const applyFiltersAndSort = () => {
     let filtered = [...products];
 
-    // Apply filters
+    // Apply category filter
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(product => 
+        product.category.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
+    // Apply other filters
     if (filters.categories.length > 0) {
       filtered = filtered.filter(product => 
         filters.categories.includes(product.category)
@@ -78,6 +88,9 @@ export default function CategoriesScreen() {
       case 'newest':
         filtered.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
         break;
+      case 'discount':
+        filtered.sort((a, b) => (b.discount || 0) - (a.discount || 0));
+        break;
       case 'popularity':
       default:
         filtered.sort((a, b) => b.reviewCount - a.reviewCount);
@@ -100,7 +113,8 @@ export default function CategoriesScreen() {
       case 'price-low': return 'Price: Low to High';
       case 'price-high': return 'Price: High to Low';
       case 'rating': return 'Customer Rating';
-      case 'newest': return 'Newest First';
+      case 'newest': return 'What\'s New';
+      case 'discount': return 'Better Discount';
       default: return 'Popularity';
     }
   };
@@ -114,12 +128,50 @@ export default function CategoriesScreen() {
     return count;
   };
 
+  const renderCategoryTab = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={[
+        styles.categoryTab,
+        selectedCategory === item.id && styles.activeCategoryTab
+      ]}
+      onPress={() => setSelectedCategory(item.id)}
+    >
+      <Text style={[
+        styles.categoryTabText,
+        selectedCategory === item.id && styles.activeCategoryTabText
+      ]}>
+        {item.name}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderProductItem = ({ item }: { item: Product }) => (
+    <ProductCard
+      product={item}
+      width={viewMode === 'grid' ? (screenWidth - 48) / 2 : screenWidth - 32}
+    />
+  );
+
+  const allCategories = [{ id: 'all', name: 'All' }, ...categories];
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>All Products</Text>
-        <Text style={styles.resultCount}>{filteredProducts.length} items</Text>
+        <Text style={styles.title}>Categories</Text>
+        <Text style={styles.resultCount}>{filteredProducts.length} Products</Text>
+      </View>
+
+      {/* Category Tabs */}
+      <View style={styles.categoryTabsContainer}>
+        <FlatList
+          data={allCategories}
+          renderItem={renderCategoryTab}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryTabsList}
+        />
       </View>
 
       {/* Filter and Sort Bar */}
@@ -128,7 +180,7 @@ export default function CategoriesScreen() {
           style={styles.filterButton}
           onPress={() => setShowFilterModal(true)}
         >
-          <Filter size={18} color="#333" />
+          <Filter size={16} color="#333" />
           <Text style={styles.filterText}>
             Filter {getActiveFiltersCount() > 0 && `(${getActiveFiltersCount()})`}
           </Text>
@@ -140,12 +192,25 @@ export default function CategoriesScreen() {
           style={styles.sortButton}
           onPress={() => setShowSortModal(true)}
         >
-          <ArrowUpDown size={18} color="#333" />
+          <ArrowUpDown size={16} color="#333" />
           <Text style={styles.sortText}>{getSortLabel()}</Text>
+        </TouchableOpacity>
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity
+          style={styles.viewModeButton}
+          onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+        >
+          {viewMode === 'grid' ? (
+            <List size={16} color="#333" />
+          ) : (
+            <Grid size={16} color="#333" />
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Products Grid */}
+      {/* Products Grid/List */}
       <ScrollView 
         style={styles.content} 
         showsVerticalScrollIndicator={false}
@@ -154,12 +219,15 @@ export default function CategoriesScreen() {
         }
       >
         {filteredProducts.length > 0 ? (
-          <View style={styles.productsGrid}>
+          <View style={[
+            styles.productsContainer,
+            viewMode === 'list' && styles.productsListContainer
+          ]}>
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
-                width={(screenWidth - 48) / 2}
+                width={viewMode === 'grid' ? (screenWidth - 48) / 2 : screenWidth - 32}
               />
             ))}
           </View>
@@ -212,6 +280,36 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
+  categoryTabsContainer: {
+    backgroundColor: '#f8f8f8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  categoryTabsList: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  categoryTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  activeCategoryTab: {
+    backgroundColor: '#E91E63',
+    borderColor: '#E91E63',
+  },
+  categoryTabText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#666',
+  },
+  activeCategoryTabText: {
+    color: '#fff',
+  },
   filterSortBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -229,39 +327,46 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter-SemiBold',
     color: '#333',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   divider: {
     width: 1,
-    height: 24,
+    height: 20,
     backgroundColor: '#ddd',
-    marginHorizontal: 16,
+    marginHorizontal: 12,
   },
   sortButton: {
-    flex: 1,
+    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
   },
   sortText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Inter-SemiBold',
     color: '#333',
-    marginLeft: 8,
+    marginLeft: 6,
+  },
+  viewModeButton: {
+    padding: 8,
   },
   content: {
     flex: 1,
   },
-  productsGrid: {
+  productsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 16,
     paddingTop: 16,
     justifyContent: 'space-between',
+  },
+  productsListContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
   },
   emptyState: {
     flex: 1,

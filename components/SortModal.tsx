@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Check, X } from 'lucide-react-native';
 import { SortOption } from '@/types';
 
 interface SortModalProps {
@@ -18,10 +18,11 @@ interface SortModalProps {
 
 const sortOptions: SortOption[] = [
   { label: 'Popularity', value: 'popularity' },
+  { label: 'What\'s New', value: 'newest' },
   { label: 'Price: Low to High', value: 'price-low' },
   { label: 'Price: High to Low', value: 'price-high' },
-  { label: 'Newest First', value: 'newest' },
   { label: 'Customer Rating', value: 'rating' },
+  { label: 'Better Discount', value: 'discount' },
 ];
 
 export function SortModal({ visible, onClose, selectedSort, onSelectSort }: SortModalProps) {
@@ -44,7 +45,10 @@ export function SortModal({ visible, onClose, selectedSort, onSelectSort }: Sort
       >
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.title}>Sort By</Text>
+            <Text style={styles.title}>SORT BY</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <X size={20} color="#333" />
+            </TouchableOpacity>
           </View>
           
           {sortOptions.map((option) => (
@@ -53,9 +57,14 @@ export function SortModal({ visible, onClose, selectedSort, onSelectSort }: Sort
               style={styles.option}
               onPress={() => handleSelect(option.value)}
             >
-              <Text style={styles.optionText}>{option.label}</Text>
+              <Text style={[
+                styles.optionText,
+                selectedSort === option.value && styles.selectedOptionText
+              ]}>
+                {option.label}
+              </Text>
               {selectedSort === option.value && (
-                <Check size={20} color="#E91E63" />
+                <Check size={18} color="#E91E63" />
               )}
             </TouchableOpacity>
           ))}
@@ -69,38 +78,47 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   container: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    margin: 32,
-    minWidth: 280,
-    maxWidth: 320,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   title: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
     color: '#333',
-    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  closeButton: {
+    padding: 4,
   },
   option: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
   optionText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#333',
+  },
+  selectedOptionText: {
+    fontFamily: 'Inter-SemiBold',
+    color: '#E91E63',
   },
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Heart, Star } from 'lucide-react-native';
@@ -13,10 +13,15 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export function ProductCard({ product, width }: ProductCardProps) {
   const router = useRouter();
+  const [isWishlisted, setIsWishlisted] = useState(false);
   const cardWidth = width || (screenWidth - 48) / 2;
 
   const handlePress = () => {
     router.push(`/product/${product.id}`);
+  };
+
+  const handleWishlistPress = () => {
+    setIsWishlisted(!isWishlisted);
   };
 
   return (
@@ -27,32 +32,74 @@ export function ProductCard({ product, width }: ProductCardProps) {
     >
       <View style={styles.imageContainer}>
         <Image source={{ uri: product.image }} style={styles.image} />
-        {product.discount && (
+        
+        {/* Discount Badge */}
+        {product.discount && product.discount > 0 && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{product.discount}% OFF</Text>
           </View>
         )}
-        <TouchableOpacity style={styles.heartButton}>
-          <Heart size={20} color="#666" strokeWidth={1.5} />
+        
+        {/* New Badge */}
+        {product.isNew && (
+          <View style={styles.newBadge}>
+            <Text style={styles.newText}>NEW</Text>
+          </View>
+        )}
+        
+        {/* Bestseller Badge */}
+        {product.isBestseller && (
+          <View style={styles.bestsellerBadge}>
+            <Text style={styles.bestsellerText}>BESTSELLER</Text>
+          </View>
+        )}
+        
+        {/* Wishlist Button */}
+        <TouchableOpacity 
+          style={styles.heartButton}
+          onPress={handleWishlistPress}
+        >
+          <Heart 
+            size={18} 
+            color={isWishlisted ? "#E91E63" : "#666"} 
+            fill={isWishlisted ? "#E91E63" : "none"}
+            strokeWidth={1.5} 
+          />
         </TouchableOpacity>
       </View>
       
       <View style={styles.content}>
+        {/* Brand */}
         <Text style={styles.brand} numberOfLines={1}>{product.brand}</Text>
+        
+        {/* Product Name */}
         <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
         
+        {/* Rating */}
         <View style={styles.ratingContainer}>
           <Star size={12} color="#FF9800" fill="#FF9800" />
           <Text style={styles.rating}>{product.rating}</Text>
           <Text style={styles.reviewCount}>({product.reviewCount})</Text>
         </View>
         
+        {/* Price */}
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>₹{product.price}</Text>
-          {product.originalPrice && (
-            <Text style={styles.originalPrice}>₹{product.originalPrice}</Text>
+          <Text style={styles.price}>₹{product.price.toLocaleString()}</Text>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <Text style={styles.originalPrice}>₹{product.originalPrice.toLocaleString()}</Text>
           )}
         </View>
+        
+        {/* Sizes Preview */}
+        {product.sizes && product.sizes.length > 0 && (
+          <View style={styles.sizesContainer}>
+            <Text style={styles.sizesLabel}>Sizes: </Text>
+            <Text style={styles.sizesText} numberOfLines={1}>
+              {product.sizes.slice(0, 3).join(', ')}
+              {product.sizes.length > 3 && '...'}
+            </Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -68,11 +115,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    overflow: 'hidden',
   },
   imageContainer: {
     position: 'relative',
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
     overflow: 'hidden',
   },
   image: {
@@ -92,7 +138,35 @@ const styles = StyleSheet.create({
   discountText: {
     color: '#fff',
     fontSize: 10,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Inter-Bold',
+  },
+  newBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#4CAF50',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  newText: {
+    color: '#fff',
+    fontSize: 9,
+    fontFamily: 'Inter-Bold',
+  },
+  bestsellerBadge: {
+    position: 'absolute',
+    top: 32,
+    left: 8,
+    backgroundColor: '#FF9800',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  bestsellerText: {
+    color: '#fff',
+    fontSize: 8,
+    fontFamily: 'Inter-Bold',
   },
   heartButton: {
     position: 'absolute',
@@ -108,14 +182,14 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 12,
     color: '#666',
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inter-SemiBold',
     marginBottom: 2,
   },
   name: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#333',
-    fontFamily: 'Inter-SemiBold',
-    lineHeight: 18,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 16,
     marginBottom: 6,
   },
   ratingContainer: {
@@ -124,13 +198,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   rating: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#333',
     fontFamily: 'Inter-SemiBold',
-    marginLeft: 4,
+    marginLeft: 3,
   },
   reviewCount: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
     fontFamily: 'Inter-Regular',
     marginLeft: 2,
@@ -138,17 +212,33 @@ const styles = StyleSheet.create({
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 4,
   },
   price: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#333',
     fontFamily: 'Inter-Bold',
   },
   originalPrice: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#999',
     fontFamily: 'Inter-Regular',
     textDecorationLine: 'line-through',
-    marginLeft: 8,
+    marginLeft: 6,
+  },
+  sizesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sizesLabel: {
+    fontSize: 10,
+    color: '#666',
+    fontFamily: 'Inter-Regular',
+  },
+  sizesText: {
+    fontSize: 10,
+    color: '#333',
+    fontFamily: 'Inter-SemiBold',
+    flex: 1,
   },
 });
