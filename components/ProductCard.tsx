@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'rea
 import { useRouter } from 'expo-router';
 import { Heart, Star } from 'lucide-react-native';
 import { Product } from '@/types';
+import { useWishlist } from '@/hooks/useWishlist';
 
 interface ProductCardProps {
   product: Product;
@@ -13,15 +14,26 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export function ProductCard({ product, width }: ProductCardProps) {
   const router = useRouter();
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const cardWidth = width || (screenWidth - 48) / 2;
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const [isWishlisted, setIsWishlisted] = useState(isInWishlist(product.id));
 
   const handlePress = () => {
     router.push(`/product/${product.id}`);
   };
 
-  const handleWishlistPress = () => {
-    setIsWishlisted(!isWishlisted);
+  const handleWishlistPress = async () => {
+    if (isWishlisted) {
+      const success = await removeFromWishlist(product.id);
+      if (success) {
+        setIsWishlisted(false);
+      }
+    } else {
+      const success = await addToWishlist(product);
+      if (success) {
+        setIsWishlisted(true);
+      }
+    }
   };
 
   return (

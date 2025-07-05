@@ -13,12 +13,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Heart, Star, ShoppingBag, Share } from 'lucide-react-native';
-import { products } from '@/data/products';
 import { Product } from '@/types';
 import { useCart } from '@/hooks/useCart';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
+import { useWishlist } from '@/hooks/useWishlist';
+import { Platform } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
+
+const getApiBaseUrl = () => {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:5000/api';
+  }
+  return 'http://192.168.1.100:5000/api';
+};
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -28,15 +36,38 @@ export default function ProductDetailScreen() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
 
   const router = useRouter();
   const { addToCart } = useCart();
   const { addToRecentlyViewed } = useRecentlyViewed();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+
+  const isWishlisted = product ? isInWishlist(product.id) : false;
 
   useEffect(() => {
     loadProduct();
   }, [id]);
+
+  const transformProduct = (backendProduct: any): Product => ({
+    id: backendProduct._id,
+    name: backendProduct.name,
+    brand: backendProduct.brand,
+    price: backendProduct.price,
+    originalPrice: backendProduct.originalPrice,
+    discount: backendProduct.discount,
+    rating: backendProduct.rating?.average || 0,
+    reviewCount: backendProduct.rating?.count || 0,
+    image: backendProduct.images?.[0]?.url || backendProduct.primaryImage || '',
+    images: backendProduct.images?.map((img: any) => typeof img === 'string' ? img : img.url) || [],
+    category: backendProduct.category,
+    subcategory: backendProduct.subcategory,
+    description: backendProduct.description || '',
+    sizes: backendProduct.sizes || [],
+    colors: backendProduct.colors?.map((color: any) => typeof color === 'string' ? color : color.name) || [],
+    inStock: backendProduct.inStock !== false,
+    isNew: backendProduct.isNew,
+    isBestseller: backendProduct.isBestseller,
+  });
 
   const loadProduct = async () => {
     try {
@@ -44,14 +75,23 @@ export default function ProductDetailScreen() {
       const productId = Array.isArray(id) ? id[0] : id;
       
       if (productId) {
-        const foundProduct = products.find(p => p.id === productId);
-        if (foundProduct) {
-          setProduct(foundProduct);
-          setSelectedSize(foundProduct.sizes[0] || '');
-          setSelectedColor(foundProduct.colors[0] || '');
-          
-          // Add to recently viewed
-          await addToRecentlyViewed(foundProduct);
+        const API_BASE_URL = getApiBaseUrl();
+        const response = await fetch(`${API_BASE_URL}/products/${productId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'success' && data.data?.product) {
+            const transformedProduct = transformProduct(data.data.product);
+            setProduct(transformedProduct);
+            setSelectedSize(transformedProduct.sizes[0] || '');
+            setSelectedColor(transformedProduct.colors[0] || '');
+            
+            // Add to recently viewed
+            await addToRecentlyViewed(transformedProduct);
+          } else {
+            Alert.alert('Error', 'Product not found');
+            router.back();
+          }
         } else {
           Alert.alert('Error', 'Product not found');
           router.back();
@@ -87,12 +127,20 @@ export default function ProductDetailScreen() {
     }
   };
 
-  const handleWishlist = () => {
-    setIsWishlisted(!isWishlisted);
-    Alert.alert(
-      isWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist',
-      isWishlisted ? 'Product removed from your wishlist' : 'Product added to your wishlist'
-    );
+  const handleWishlist = async () => {
+    if (!product) return;
+
+    if (isWishlisted) {
+      const success = await removeFromWishlist(product.id);
+      if (success) {
+        Alert.alert('Removed', 'Product removed from wishlist');
+      }
+    } else {
+      const success = await addToWishlist(product);
+      if (success) {
+        Alert.alert('Added', 'Product added to wishlist');
+      }
+    }
   };
 
   const handleShare = () => {

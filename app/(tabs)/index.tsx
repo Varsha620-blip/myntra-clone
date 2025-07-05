@@ -15,13 +15,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Search, Filter, ArrowRight, Star, Heart, ShoppingBag } from 'lucide-react-native';
 import { ProductCard } from '@/components/ProductCard';
-import { products, categories } from '@/data/products';
 import { Product } from '@/types';
 import { useFilters } from '@/hooks/useFilters';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { useCart } from '@/hooks/useCart';
+import { useAuth } from '@/hooks/useAuth';
 
 const { width: screenWidth } = Dimensions.get('window');
+
+const categories = [
+  { id: 'men', name: 'Men', icon: '👔', count: 5 },
+  { id: 'women', name: 'Women', icon: '👗', count: 5 },
+  { id: 'kids', name: 'Kids', icon: '🧸', count: 2 },
+  { id: 'footwear', name: 'Footwear', icon: '👟', count: 3 },
+  { id: 'accessories', name: 'Accessories', icon: '👜', count: 3 },
+  { id: 'beauty', name: 'Beauty', icon: '💄', count: 2 },
+  { id: 'home', name: 'Home & Living', icon: '🏠', count: 1 },
+  { id: 'sports', name: 'Sports', icon: '⚽', count: 2 },
+  { id: 'electronics', name: 'Electronics', icon: '📱', count: 2 }
+];
 
 export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -30,25 +42,28 @@ export default function HomeScreen() {
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   
   const router = useRouter();
-  const { searchQuery, updateSearch, filteredProducts } = useFilters();
+  const { searchQuery, updateSearch, filteredProducts, allProducts, loading, searchProducts } = useFilters();
   const { recentlyViewed } = useRecentlyViewed();
   const { getTotalItems } = useCart();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [allProducts]);
 
   const loadInitialData = async () => {
+    if (allProducts.length === 0) return;
+
     // Load featured products (bestsellers)
-    const featured = products.filter(product => product.isBestseller).slice(0, 8);
+    const featured = allProducts.filter(product => product.isBestseller).slice(0, 8);
     setFeaturedProducts(featured);
 
     // Load trending products (high rating)
-    const trending = products.filter(product => product.rating >= 4.3).slice(0, 6);
+    const trending = allProducts.filter(product => product.rating >= 4.3).slice(0, 6);
     setTrendingProducts(trending);
 
     // Load new arrivals
-    const newItems = products.filter(product => product.isNew).slice(0, 6);
+    const newItems = allProducts.filter(product => product.isNew).slice(0, 6);
     setNewArrivals(newItems);
   };
 
@@ -56,6 +71,13 @@ export default function HomeScreen() {
     setRefreshing(true);
     await loadInitialData();
     setRefreshing(false);
+  };
+
+  const handleSearch = (query: string) => {
+    updateSearch(query);
+    if (query.trim()) {
+      searchProducts(query);
+    }
   };
 
   const renderCategoryCard = ({ item }: { item: any }) => (
@@ -139,7 +161,7 @@ export default function HomeScreen() {
               style={styles.searchInput}
               placeholder="Search for products, brands and more"
               value={searchQuery}
-              onChangeText={updateSearch}
+              onChangeText={handleSearch}
               placeholderTextColor="#999"
             />
           </View>
@@ -150,6 +172,19 @@ export default function HomeScreen() {
             <Filter size={20} color="#E91E63" />
           </TouchableOpacity>
         </View>
+
+        {/* Auth Banner */}
+        {!isAuthenticated && (
+          <View style={styles.authBanner}>
+            <Text style={styles.authBannerText}>Sign in for personalized experience</Text>
+            <TouchableOpacity 
+              style={styles.authButton}
+              onPress={() => router.push('/(auth)/login')}
+            >
+              <Text style={styles.authButtonText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Banner */}
         <View style={styles.bannerContainer}>
@@ -417,6 +452,33 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  authBanner: {
+    backgroundColor: '#FFF3E0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 8,
+  },
+  authBannerText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#E65100',
+  },
+  authButton: {
+    backgroundColor: '#E91E63',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  authButtonText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: '#fff',
   },
   bannerContainer: {
     marginHorizontal: 16,
