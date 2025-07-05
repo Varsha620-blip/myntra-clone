@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Search, Filter, ArrowRight, Star, Heart, ShoppingBag } from 'lucide-react-native';
+import { Search, Filter, ArrowRight, Star, Heart, ShoppingBag, LogOut } from 'lucide-react-native';
 import { ProductCard } from '@/components/ProductCard';
 import { Product } from '@/types';
 import { useFilters } from '@/hooks/useFilters';
@@ -27,12 +27,10 @@ const categories = [
   { id: 'men', name: 'Men', icon: '👔', count: 5 },
   { id: 'women', name: 'Women', icon: '👗', count: 5 },
   { id: 'kids', name: 'Kids', icon: '🧸', count: 2 },
-  { id: 'footwear', name: 'Footwear', icon: '👟', count: 3 },
+  { id: 'sports', name: 'Sports', icon: '⚽', count: 2 },
   { id: 'accessories', name: 'Accessories', icon: '👜', count: 3 },
   { id: 'beauty', name: 'Beauty', icon: '💄', count: 2 },
-  { id: 'home', name: 'Home & Living', icon: '🏠', count: 1 },
-  { id: 'sports', name: 'Sports', icon: '⚽', count: 2 },
-  { id: 'electronics', name: 'Electronics', icon: '📱', count: 2 }
+  { id: 'home', name: 'Home', icon: '🏠', count: 1 }
 ];
 
 export default function HomeScreen() {
@@ -45,7 +43,7 @@ export default function HomeScreen() {
   const { searchQuery, updateSearch, filteredProducts, allProducts, loading, searchProducts } = useFilters();
   const { recentlyViewed } = useRecentlyViewed();
   const { getTotalItems } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
 
   useEffect(() => {
     loadInitialData();
@@ -80,6 +78,11 @@ export default function HomeScreen() {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/(auth)/login');
+  };
+
   const renderCategoryCard = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.categoryCard}
@@ -101,12 +104,10 @@ export default function HomeScreen() {
       'men': 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg',
       'women': 'https://images.pexels.com/photos/1381556/pexels-photo-1381556.jpeg',
       'kids': 'https://images.pexels.com/photos/1620760/pexels-photo-1620760.jpeg',
-      'footwear': 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg',
+      'sports': 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg',
       'accessories': 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg',
       'beauty': 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
       'home': 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
-      'sports': 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg',
-      'electronics': 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
     };
     return categoryImages[categoryId] || 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg';
   };
@@ -117,7 +118,7 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  const displayProducts = searchQuery.trim() ? filteredProducts : featuredProducts;
+  const displayProducts = searchQuery.trim() ? filteredProducts : allProducts.slice(0, 12);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -149,6 +150,11 @@ export default function HomeScreen() {
                   </View>
                 )}
               </TouchableOpacity>
+              {isAuthenticated && (
+                <TouchableOpacity style={styles.iconButton} onPress={handleLogout}>
+                  <LogOut size={24} color="#fff" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -183,6 +189,14 @@ export default function HomeScreen() {
             >
               <Text style={styles.authButtonText}>Sign In</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Welcome Message for Authenticated Users */}
+        {isAuthenticated && user && (
+          <View style={styles.welcomeBanner}>
+            <Text style={styles.welcomeText}>Welcome back, {user.name}! 👋</Text>
+            <Text style={styles.welcomeSubtext}>Discover amazing deals just for you</Text>
           </View>
         )}
 
@@ -292,17 +306,17 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>
-                {searchQuery.trim() ? 'No products found' : 'No trending products available'}
+                {searchQuery.trim() ? 'No products found' : 'Loading products...'}
               </Text>
               <Text style={styles.emptySubtext}>
-                {searchQuery.trim() ? 'Try a different search term' : 'Check back later for new arrivals'}
+                {searchQuery.trim() ? 'Try a different search term' : 'Please wait while we load the latest products'}
               </Text>
             </View>
           )}
         </View>
 
         {/* New Arrivals */}
-        {!searchQuery.trim() && (
+        {!searchQuery.trim() && newArrivals.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>NEW ARRIVALS</Text>
@@ -479,6 +493,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Bold',
     color: '#fff',
+  },
+  welcomeBanner: {
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 8,
+  },
+  welcomeText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#2E7D32',
+    marginBottom: 2,
+  },
+  welcomeSubtext: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#4CAF50',
   },
   bannerContainer: {
     marginHorizontal: 16,

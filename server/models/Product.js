@@ -122,7 +122,7 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  isNew: {
+  isNewProduct: { // Changed from isNew to avoid Mongoose conflict
     type: Boolean,
     default: false
   },
@@ -146,7 +146,8 @@ const productSchema = new mongoose.Schema({
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  toObject: { virtuals: true },
+  suppressReservedKeysWarning: true // Suppress the isNew warning
 });
 
 // Indexes for better query performance
@@ -156,14 +157,17 @@ productSchema.index({ price: 1 });
 productSchema.index({ 'rating.average': -1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ isFeatured: 1, isActive: 1 });
-productSchema.index({ isNew: 1, isActive: 1 });
+productSchema.index({ isNewProduct: 1, isActive: 1 });
 productSchema.index({ isBestseller: 1, isActive: 1 });
 productSchema.index({ name: 'text', description: 'text', brand: 'text' });
 
-// Virtual for primary image
+// Virtual for primary image - Fixed to handle empty arrays
 productSchema.virtual('primaryImage').get(function() {
+  if (!this.images || this.images.length === 0) {
+    return null;
+  }
   const primaryImg = this.images.find(img => img.isPrimary);
-  return primaryImg ? primaryImg.url : (this.images[0] ? this.images[0].url : null);
+  return primaryImg ? primaryImg.url : this.images[0].url;
 });
 
 // Virtual for in stock status
@@ -171,7 +175,12 @@ productSchema.virtual('inStock').get(function() {
   return this.stock > 0;
 });
 
-// Virtual for discount percentage calculation
+// Virtual for isNew (maps to isNewProduct)
+productSchema.virtual('isNew').get(function() {
+  return this.isNewProduct;
+});
+
+// Pre-save middleware to calculate discount
 productSchema.pre('save', function(next) {
   if (this.originalPrice && this.price) {
     this.discount = Math.round(((this.originalPrice - this.price) / this.originalPrice) * 100);
@@ -240,7 +249,7 @@ productSchema.statics.findWithFilters = function(filters = {}) {
   }
   
   // Special filters
-  if (filters.isNew) query.isNew = true;
+  if (filters.isNewProduct) query.isNewProduct = true;
   if (filters.isBestseller) query.isBestseller = true;
   if (filters.isFeatured) query.isFeatured = true;
   

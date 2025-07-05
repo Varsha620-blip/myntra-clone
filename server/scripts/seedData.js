@@ -5,7 +5,7 @@ require('dotenv').config();
 const User = require('../models/User');
 const Product = require('../models/Product');
 
-// Sample products data
+// Enhanced sample products data with more items
 const sampleProducts = [
   {
     name: 'Cotton Casual Shirt',
@@ -33,7 +33,7 @@ const sampleProducts = [
     ],
     stock: 50,
     rating: { average: 4.2, count: 1204 },
-    isNew: true,
+    isNewProduct: true,
     isFeatured: true,
     tags: ['casual', 'cotton', 'shirt', 'men']
   },
@@ -49,10 +49,6 @@ const sampleProducts = [
         url: 'https://images.pexels.com/photos/1381556/pexels-photo-1381556.jpeg',
         alt: 'Floral Summer Dress - Front View',
         isPrimary: true
-      },
-      {
-        url: 'https://images.pexels.com/photos/1379636/pexels-photo-1379636.jpeg',
-        alt: 'Floral Summer Dress - Back View'
       }
     ],
     sizes: ['XS', 'S', 'M', 'L'],
@@ -88,7 +84,7 @@ const sampleProducts = [
     ],
     stock: 25,
     rating: { average: 4.7, count: 432 },
-    isNew: true,
+    isNewProduct: true,
     tags: ['kids', 'tshirt', 'rainbow', 'cotton']
   },
   {
@@ -120,7 +116,7 @@ const sampleProducts = [
     description: 'Elegant designer handbag with premium leather finish. Perfect accessory for any occasion.',
     price: 8999,
     originalPrice: 12999,
-    category: 'Women',
+    category: 'Accessories',
     images: [
       {
         url: 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg',
@@ -162,7 +158,7 @@ const sampleProducts = [
     ],
     stock: 40,
     rating: { average: 4.4, count: 1890 },
-    isNew: true,
+    isNewProduct: true,
     isFeatured: true,
     tags: ['sneakers', 'sports', 'running', 'nike']
   },
@@ -196,7 +192,7 @@ const sampleProducts = [
     description: 'Luxurious silk scarf with elegant pattern and premium quality. Perfect accessory for sophisticated looks.',
     price: 15999,
     originalPrice: 19999,
-    category: 'Women',
+    category: 'Accessories',
     images: [
       {
         url: 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
@@ -214,6 +210,104 @@ const sampleProducts = [
     rating: { average: 4.8, count: 234 },
     isBestseller: true,
     tags: ['scarf', 'silk', 'luxury', 'women', 'accessories']
+  },
+  // Additional products to reach 12 items
+  {
+    name: 'Yoga Leggings',
+    brand: 'Lululemon',
+    description: 'High-waisted yoga leggings with moisture-wicking fabric. Perfect for workouts and casual wear.',
+    price: 1899,
+    originalPrice: 2499,
+    category: 'Women',
+    images: [
+      {
+        url: 'https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg',
+        alt: 'Yoga Leggings',
+        isPrimary: true
+      }
+    ],
+    sizes: ['XS', 'S', 'M', 'L', 'XL'],
+    colors: [
+      { name: 'Black', code: '#000000' },
+      { name: 'Navy', code: '#000080' },
+      { name: 'Grey', code: '#808080' }
+    ],
+    stock: 35,
+    rating: { average: 4.6, count: 987 },
+    isNewProduct: true,
+    tags: ['leggings', 'yoga', 'activewear', 'women']
+  },
+  {
+    name: 'Wireless Earbuds',
+    brand: 'Apple',
+    description: 'Premium wireless earbuds with noise cancellation and long battery life. Crystal clear sound quality.',
+    price: 12999,
+    originalPrice: 15999,
+    category: 'Accessories',
+    images: [
+      {
+        url: 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
+        alt: 'Wireless Earbuds',
+        isPrimary: true
+      }
+    ],
+    sizes: ['One Size'],
+    colors: [
+      { name: 'White', code: '#FFFFFF' },
+      { name: 'Black', code: '#000000' }
+    ],
+    stock: 20,
+    rating: { average: 4.7, count: 1543 },
+    isBestseller: true,
+    isFeatured: true,
+    tags: ['earbuds', 'wireless', 'audio', 'technology']
+  },
+  {
+    name: 'Skincare Set',
+    brand: 'The Ordinary',
+    description: 'Complete skincare routine set with cleanser, serum, and moisturizer. Suitable for all skin types.',
+    price: 2499,
+    originalPrice: 3299,
+    category: 'Beauty',
+    images: [
+      {
+        url: 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
+        alt: 'Skincare Set',
+        isPrimary: true
+      }
+    ],
+    sizes: ['One Size'],
+    colors: [
+      { name: 'Natural', code: '#F5F5DC' }
+    ],
+    stock: 15,
+    rating: { average: 4.5, count: 678 },
+    isNewProduct: true,
+    tags: ['skincare', 'beauty', 'routine', 'natural']
+  },
+  {
+    name: 'Gaming Chair',
+    brand: 'DXRacer',
+    description: 'Ergonomic gaming chair with lumbar support and adjustable height. Perfect for long gaming sessions.',
+    price: 18999,
+    originalPrice: 24999,
+    category: 'Home',
+    images: [
+      {
+        url: 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
+        alt: 'Gaming Chair',
+        isPrimary: true
+      }
+    ],
+    sizes: ['One Size'],
+    colors: [
+      { name: 'Black/Red', code: '#000000' },
+      { name: 'Black/Blue', code: '#000080' }
+    ],
+    stock: 8,
+    rating: { average: 4.4, count: 234 },
+    isFeatured: true,
+    tags: ['chair', 'gaming', 'ergonomic', 'furniture']
   }
 ];
 
