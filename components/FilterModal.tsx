@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { X, Check } from 'lucide-react-native';
 import { FilterOptions } from '@/types';
+import { categories, brands } from '@/data/products';
 
 interface FilterModalProps {
   visible: boolean;
@@ -21,16 +22,7 @@ interface FilterModalProps {
 
 const { height: screenHeight } = Dimensions.get('window');
 
-// Static categories for UI
-const staticCategories = [
-  { id: 'men', name: 'Men' },
-  { id: 'women', name: 'Women' },
-  { id: 'kids', name: 'Kids' },
-  { id: 'sports', name: 'Sports' },
-  { id: 'accessories', name: 'Accessories' }
-];
-
-export function FilterModal({ visible, onClose, filters, onApplyFilters, availableBrands = [] }: FilterModalProps) {
+export function FilterModal({ visible, onClose, filters, onApplyFilters, availableBrands = brands }: FilterModalProps) {
   const [localFilters, setLocalFilters] = useState<FilterOptions>(filters);
 
   const toggleCategory = (category: string) => {
@@ -65,7 +57,7 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
   const setRating = (rating: number) => {
     setLocalFilters({
       ...localFilters,
-      rating
+      rating: localFilters.rating === rating ? 0 : rating
     });
   };
 
@@ -82,8 +74,6 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
       brands: []
     };
     setLocalFilters(clearedFilters);
-    onApplyFilters(clearedFilters);
-    onClose();
   };
 
   const priceRanges = [
@@ -91,7 +81,8 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
     { label: '₹500 - ₹1000', min: 500, max: 1000 },
     { label: '₹1000 - ₹2000', min: 1000, max: 2000 },
     { label: '₹2000 - ₹5000', min: 2000, max: 5000 },
-    { label: 'Above ₹5000', min: 5000, max: 50000 },
+    { label: '₹5000 - ₹10000', min: 5000, max: 10000 },
+    { label: 'Above ₹10000', min: 10000, max: 50000 },
   ];
 
   const ratings = [4, 3, 2, 1];
@@ -105,7 +96,7 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
     >
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Filters</Text>
+          <Text style={styles.title}>FILTERS</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <X size={24} color="#333" />
           </TouchableOpacity>
@@ -114,8 +105,8 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Categories */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Categories</Text>
-            {staticCategories.map(category => (
+            <Text style={styles.sectionTitle}>CATEGORIES</Text>
+            {categories.map(category => (
               <TouchableOpacity
                 key={category.id}
                 style={styles.filterItem}
@@ -123,7 +114,7 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
               >
                 <Text style={styles.filterLabel}>{category.name}</Text>
                 {localFilters.categories.includes(category.name) && (
-                  <Check size={20} color="#E91E63" />
+                  <Check size={18} color="#E91E63" />
                 )}
               </TouchableOpacity>
             ))}
@@ -131,7 +122,7 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
 
           {/* Price Range */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Price Range</Text>
+            <Text style={styles.sectionTitle}>PRICE</Text>
             {priceRanges.map((range, index) => (
               <TouchableOpacity
                 key={index}
@@ -141,7 +132,7 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
                 <Text style={styles.filterLabel}>{range.label}</Text>
                 {localFilters.priceRange.min === range.min && 
                  localFilters.priceRange.max === range.max && (
-                  <Check size={20} color="#E91E63" />
+                  <Check size={18} color="#E91E63" />
                 )}
               </TouchableOpacity>
             ))}
@@ -149,7 +140,7 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
 
           {/* Rating */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Rating</Text>
+            <Text style={styles.sectionTitle}>CUSTOMER RATING</Text>
             {ratings.map(rating => (
               <TouchableOpacity
                 key={rating}
@@ -158,16 +149,16 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
               >
                 <Text style={styles.filterLabel}>{rating}★ & Above</Text>
                 {localFilters.rating === rating && (
-                  <Check size={20} color="#E91E63" />
+                  <Check size={18} color="#E91E63" />
                 )}
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Brands */}
-          {availableBrands.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Brands</Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>BRAND</Text>
+            <ScrollView style={styles.brandsList} nestedScrollEnabled>
               {availableBrands.map(brand => (
                 <TouchableOpacity
                   key={brand}
@@ -176,20 +167,20 @@ export function FilterModal({ visible, onClose, filters, onApplyFilters, availab
                 >
                   <Text style={styles.filterLabel}>{brand}</Text>
                   {localFilters.brands.includes(brand) && (
-                    <Check size={20} color="#E91E63" />
+                    <Check size={18} color="#E91E63" />
                   )}
                 </TouchableOpacity>
               ))}
-            </View>
-          )}
+            </ScrollView>
+          </View>
         </ScrollView>
 
         <View style={styles.footer}>
           <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
-            <Text style={styles.clearText}>Clear All</Text>
+            <Text style={styles.clearText}>CLEAR ALL</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
-            <Text style={styles.applyText}>Apply Filters</Text>
+            <Text style={styles.applyText}>APPLY</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -206,14 +197,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   title: {
-    fontSize: 20,
+    fontSize: 16,
     fontFamily: 'Inter-Bold',
     color: '#333',
+    letterSpacing: 0.5,
   },
   closeButton: {
     padding: 4,
@@ -226,10 +218,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
     color: '#333',
     marginBottom: 12,
+    letterSpacing: 0.5,
   },
   filterItem: {
     flexDirection: 'row',
@@ -243,6 +236,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#333',
+  },
+  brandsList: {
+    maxHeight: 200,
   },
   footer: {
     flexDirection: 'row',
@@ -259,9 +255,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clearText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
     color: '#666',
+    letterSpacing: 0.5,
   },
   applyButton: {
     flex: 2,
@@ -271,8 +268,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   applyText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
     color: '#fff',
+    letterSpacing: 0.5,
   },
 });

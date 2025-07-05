@@ -15,90 +15,28 @@ import { Filter, ArrowUpDown, Grid2x2 as Grid, List } from 'lucide-react-native'
 import { ProductCard } from '@/components/ProductCard';
 import { FilterModal } from '@/components/FilterModal';
 import { SortModal } from '@/components/SortModal';
-import { products, brands, categories, subcategories } from '@/data/products';
-import { FilterOptions, Product } from '@/types';
+import { categories } from '@/data/products';
+import { useFilters } from '@/hooks/useFilters';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function CategoriesScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showSortModal, setShowSortModal] = useState(false);
-  const [selectedSort, setSelectedSort] = useState('popularity');
   const [refreshing, setRefreshing] = useState(false);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [filters, setFilters] = useState<FilterOptions>({
-    categories: [],
-    priceRange: { min: 0, max: 50000 },
-    rating: 0,
-    brands: []
-  });
+
+  const {
+    filteredProducts,
+    filters,
+    sortBy,
+    updateFilters,
+    updateSort,
+    getActiveFiltersCount,
+  } = useFilters();
 
   const router = useRouter();
-
-  useEffect(() => {
-    applyFiltersAndSort();
-  }, [filters, selectedSort, selectedCategory]);
-
-  const applyFiltersAndSort = () => {
-    let filtered = [...products];
-
-    // Apply category filter
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(product => 
-        product.category.toLowerCase() === selectedCategory.toLowerCase()
-      );
-    }
-
-    // Apply other filters
-    if (filters.categories.length > 0) {
-      filtered = filtered.filter(product => 
-        filters.categories.includes(product.category)
-      );
-    }
-
-    if (filters.brands.length > 0) {
-      filtered = filtered.filter(product => 
-        filters.brands.includes(product.brand)
-      );
-    }
-
-    if (filters.priceRange.min > 0 || filters.priceRange.max < 50000) {
-      filtered = filtered.filter(product => 
-        product.price >= filters.priceRange.min && product.price <= filters.priceRange.max
-      );
-    }
-
-    if (filters.rating > 0) {
-      filtered = filtered.filter(product => product.rating >= filters.rating);
-    }
-
-    // Apply sorting
-    switch (selectedSort) {
-      case 'price-low':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'newest':
-        filtered.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
-        break;
-      case 'discount':
-        filtered.sort((a, b) => (b.discount || 0) - (a.discount || 0));
-        break;
-      case 'popularity':
-      default:
-        filtered.sort((a, b) => b.reviewCount - a.reviewCount);
-        break;
-    }
-
-    setFilteredProducts(filtered);
-  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -109,7 +47,7 @@ export default function CategoriesScreen() {
   };
 
   const getSortLabel = () => {
-    switch (selectedSort) {
+    switch (sortBy) {
       case 'price-low': return 'Price: Low to High';
       case 'price-high': return 'Price: High to Low';
       case 'rating': return 'Customer Rating';
@@ -119,13 +57,14 @@ export default function CategoriesScreen() {
     }
   };
 
-  const getActiveFiltersCount = () => {
-    let count = 0;
-    if (filters.categories.length > 0) count++;
-    if (filters.brands.length > 0) count++;
-    if (filters.priceRange.min > 0 || filters.priceRange.max < 50000) count++;
-    if (filters.rating > 0) count++;
-    return count;
+  const handleCategoryFilter = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    if (categoryId === 'all') {
+      updateFilters({ ...filters, categories: [] });
+    } else {
+      const categoryName = categories.find(cat => cat.id === categoryId)?.name || '';
+      updateFilters({ ...filters, categories: [categoryName] });
+    }
   };
 
   const renderCategoryTab = ({ item }: { item: any }) => (
@@ -134,7 +73,7 @@ export default function CategoriesScreen() {
         styles.categoryTab,
         selectedCategory === item.id && styles.activeCategoryTab
       ]}
-      onPress={() => setSelectedCategory(item.id)}
+      onPress={() => handleCategoryFilter(item.id)}
     >
       <Text style={[
         styles.categoryTabText,
@@ -143,13 +82,6 @@ export default function CategoriesScreen() {
         {item.name}
       </Text>
     </TouchableOpacity>
-  );
-
-  const renderProductItem = ({ item }: { item: Product }) => (
-    <ProductCard
-      product={item}
-      width={viewMode === 'grid' ? (screenWidth - 48) / 2 : screenWidth - 32}
-    />
   );
 
   const allCategories = [{ id: 'all', name: 'All' }, ...categories];
@@ -244,16 +176,15 @@ export default function CategoriesScreen() {
         visible={showFilterModal}
         onClose={() => setShowFilterModal(false)}
         filters={filters}
-        onApplyFilters={setFilters}
-        availableBrands={brands}
+        onApplyFilters={updateFilters}
       />
 
       {/* Sort Modal */}
       <SortModal
         visible={showSortModal}
         onClose={() => setShowSortModal(false)}
-        selectedSort={selectedSort}
-        onSelectSort={setSelectedSort}
+        selectedSort={sortBy}
+        onSelectSort={updateSort}
       />
     </SafeAreaView>
   );

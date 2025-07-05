@@ -17,30 +17,26 @@ import { Search, Filter, ArrowRight, Star, Heart, ShoppingBag } from 'lucide-rea
 import { ProductCard } from '@/components/ProductCard';
 import { products, categories } from '@/data/products';
 import { Product } from '@/types';
+import { useFilters } from '@/hooks/useFilters';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
+import { useCart } from '@/hooks/useCart';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   
   const router = useRouter();
+  const { searchQuery, updateSearch, filteredProducts } = useFilters();
+  const { recentlyViewed } = useRecentlyViewed();
+  const { getTotalItems } = useCart();
 
   useEffect(() => {
     loadInitialData();
   }, []);
-
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      handleSearch();
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchQuery]);
 
   const loadInitialData = async () => {
     // Load featured products (bestsellers)
@@ -56,18 +52,6 @@ export default function HomeScreen() {
     setNewArrivals(newItems);
   };
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      const results = products.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.subcategory?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSearchResults(results);
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
@@ -79,13 +63,31 @@ export default function HomeScreen() {
       style={styles.categoryCard}
       onPress={() => router.push(`/categories/${item.id}`)}
     >
-      <View style={styles.categoryIconContainer}>
-        <Text style={styles.categoryIcon}>{item.icon}</Text>
+      <View style={styles.categoryImageContainer}>
+        <Image
+          source={{ uri: getCategoryImage(item.id) }}
+          style={styles.categoryImage}
+        />
       </View>
       <Text style={styles.categoryName}>{item.name}</Text>
       <Text style={styles.categoryCount}>{item.count} items</Text>
     </TouchableOpacity>
   );
+
+  const getCategoryImage = (categoryId: string) => {
+    const categoryImages: { [key: string]: string } = {
+      'men': 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg',
+      'women': 'https://images.pexels.com/photos/1381556/pexels-photo-1381556.jpeg',
+      'kids': 'https://images.pexels.com/photos/1620760/pexels-photo-1620760.jpeg',
+      'footwear': 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg',
+      'accessories': 'https://images.pexels.com/photos/1152077/pexels-photo-1152077.jpeg',
+      'beauty': 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
+      'home': 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
+      'sports': 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg',
+      'electronics': 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg',
+    };
+    return categoryImages[categoryId] || 'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg';
+  };
 
   const renderBrandCard = ({ item }: { item: string }) => (
     <TouchableOpacity style={styles.brandCard}>
@@ -93,7 +95,7 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  const displayProducts = searchQuery.trim() ? searchResults : featuredProducts;
+  const displayProducts = searchQuery.trim() ? filteredProducts : featuredProducts;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -114,8 +116,16 @@ export default function HomeScreen() {
               <TouchableOpacity style={styles.iconButton}>
                 <Heart size={24} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={() => router.push('/(tabs)/cart')}
+              >
                 <ShoppingBag size={24} color="#fff" />
+                {getTotalItems() > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{getTotalItems()}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -129,11 +139,14 @@ export default function HomeScreen() {
               style={styles.searchInput}
               placeholder="Search for products, brands and more"
               value={searchQuery}
-              onChangeText={setSearchQuery}
+              onChangeText={updateSearch}
               placeholderTextColor="#999"
             />
           </View>
-          <TouchableOpacity style={styles.filterButton}>
+          <TouchableOpacity 
+            style={styles.filterButton}
+            onPress={() => router.push('/(tabs)/categories')}
+          >
             <Filter size={20} color="#E91E63" />
           </TouchableOpacity>
         </View>
@@ -171,6 +184,29 @@ export default function HomeScreen() {
           />
         </View>
 
+        {/* Recently Viewed */}
+        {!searchQuery.trim() && recentlyViewed.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>RECENTLY VIEWED</Text>
+              <TouchableOpacity>
+                <Text style={styles.viewAllText}>VIEW ALL</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.horizontalProductsContainer}>
+                {recentlyViewed.slice(0, 6).map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    width={160}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
         {/* Deal of the Day */}
         <View style={styles.dealSection}>
           <View style={styles.dealHeader}>
@@ -182,7 +218,11 @@ export default function HomeScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.dealProductsContainer}>
               {featuredProducts.slice(0, 4).map((product) => (
-                <View key={product.id} style={styles.dealProductCard}>
+                <TouchableOpacity 
+                  key={product.id} 
+                  style={styles.dealProductCard}
+                  onPress={() => router.push(`/product/${product.id}`)}
+                >
                   <Image source={{ uri: product.image }} style={styles.dealProductImage} />
                   <View style={styles.dealProductInfo}>
                     <Text style={styles.dealProductBrand}>{product.brand}</Text>
@@ -193,7 +233,7 @@ export default function HomeScreen() {
                       <Text style={styles.dealProductDiscount}>({product.discount}% OFF)</Text>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
@@ -202,7 +242,7 @@ export default function HomeScreen() {
         {/* Featured Products / Search Results */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {searchQuery.trim() ? `SEARCH RESULTS (${searchResults.length})` : 'TRENDING NOW'}
+            {searchQuery.trim() ? `SEARCH RESULTS (${filteredProducts.length})` : 'TRENDING NOW'}
           </Text>
           {displayProducts.length > 0 ? (
             <View style={styles.productsGrid}>
@@ -319,6 +359,23 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 4,
+    position: 'relative',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF6B35',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cartBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: '#fff',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -437,7 +494,7 @@ const styles = StyleSheet.create({
   categoryCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     alignItems: 'center',
     marginRight: 12,
     minWidth: 90,
@@ -447,17 +504,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  categoryIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#f8f8f8',
-    justifyContent: 'center',
-    alignItems: 'center',
+  categoryImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
     marginBottom: 8,
   },
-  categoryIcon: {
-    fontSize: 24,
+  categoryImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   categoryName: {
     fontSize: 12,
