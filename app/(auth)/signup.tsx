@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { User, Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react-native';
-import { useAuth } from '@/hooks/userAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function SignupScreen() {
   const [form, setForm] = useState({

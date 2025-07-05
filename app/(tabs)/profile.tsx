@@ -10,13 +10,33 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { User, ShoppingBag, Heart, Settings, CircleHelp as HelpCircle, Star, ChevronRight, Gift, CreditCard } from 'lucide-react-native';
+import { User, ShoppingBag, Heart, Settings, CircleHelp as HelpCircle, Star, ChevronRight, Gift, CreditCard, LogOut } from 'lucide-react-native';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const handleFeaturePress = (feature: string) => {
     Alert.alert(feature, `${feature} feature coming soon!`);
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/(auth)/login');
+          }
+        }
+      ]
+    );
   };
 
   const menuItems = [
@@ -64,17 +84,46 @@ export default function ProfileScreen() {
     },
   ];
 
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.unauthenticatedContainer}>
+          <Image
+            source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg' }}
+            style={styles.avatar}
+          />
+          <Text style={styles.unauthenticatedTitle}>Welcome to Myntra</Text>
+          <Text style={styles.unauthenticatedSubtitle}>Sign in to access your profile and orders</Text>
+          
+          <TouchableOpacity 
+            style={styles.signInButton}
+            onPress={() => router.push('/(auth)/login')}
+          >
+            <Text style={styles.signInButtonText}>Sign In</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.signUpButton}
+            onPress={() => router.push('/(auth)/signup')}
+          >
+            <Text style={styles.signUpButtonText}>Create Account</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg' }}
+            source={{ uri: user?.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg' }}
             style={styles.avatar}
           />
-          <Text style={styles.name}>Guest User</Text>
-          <Text style={styles.email}>guest@myntra.com</Text>
+          <Text style={styles.name}>{user?.name || 'User'}</Text>
+          <Text style={styles.email}>{user?.email || 'user@myntra.com'}</Text>
           <TouchableOpacity style={styles.editProfileButton}>
             <Text style={styles.editProfileText}>Edit Profile</Text>
           </TouchableOpacity>
@@ -118,6 +167,23 @@ export default function ProfileScreen() {
               <ChevronRight size={20} color="#666" />
             </TouchableOpacity>
           ))}
+          
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleLogout}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.iconContainer, styles.logoutIconContainer]}>
+                <LogOut size={20} color="#E91E63" />
+              </View>
+              <View style={styles.menuItemText}>
+                <Text style={styles.menuItemTitle}>Logout</Text>
+                <Text style={styles.menuItemSubtitle}>Sign out of your account</Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color="#666" />
+          </TouchableOpacity>
         </View>
 
         {/* Promotional Banner */}
@@ -149,6 +215,55 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  unauthenticatedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  unauthenticatedTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#333',
+    marginBottom: 8,
+    marginTop: 24,
+  },
+  unauthenticatedSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  signInButton: {
+    backgroundColor: '#E91E63',
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  signInButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#fff',
+  },
+  signUpButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#E91E63',
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  signUpButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#E91E63',
   },
   header: {
     alignItems: 'center',
@@ -244,6 +359,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  logoutIconContainer: {
+    backgroundColor: 'rgba(233, 30, 99, 0.1)',
   },
   menuItemText: {
     flex: 1,
