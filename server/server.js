@@ -25,46 +25,28 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// Rate limiting
+// Rate limiting - more lenient for development
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Increased limit for development
   message: {
     status: 'error',
     message: 'Too many requests from this IP, please try again later.'
+  },
+  skip: (req) => {
+    // Skip rate limiting for development
+    return process.env.NODE_ENV === 'development';
   }
 });
 app.use('/api/', limiter);
 
-// Enhanced CORS configuration
-const allowedOrigins = [
-  'http://localhost:8081',
-  'https://localhost:8081',
-  'http://localhost:8082',
-  'http://localhost:19006',
-  'http://localhost:3000',
-  'http://127.0.0.1:8081',
-  'http://127.0.0.1:8082',
-  'http://127.0.0.1:19006',
-  process.env.CLIENT_URL
-].filter(Boolean);
-
+// Very permissive CORS for development
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log(`CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow all origins in development
-    }
-  },
+  origin: true, // Allow all origins in development
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 };
 
 app.use(cors(corsOptions));
@@ -75,11 +57,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Logging middleware
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+app.use(morgan('dev'));
 
-// Health check endpoint (before other routes)
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'success',
@@ -118,6 +98,7 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     // Connect to MongoDB
+    console.log('🔄 Connecting to MongoDB...');
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/myntra-clone', {
       retryWrites: true,
       w: 'majority'
@@ -129,15 +110,27 @@ const startServer = async () => {
     const HOST = '0.0.0.0'; // Listen on all interfaces
     
     app.listen(PORT, HOST, () => {
-      console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`🛡️  CORS Allowed Origins: ${allowedOrigins.join(', ')}`);
       console.log(`📊 Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`🔐 JWT Secret configured: ${process.env.JWT_SECRET ? 'Yes' : 'No'}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
-    process.exit(1);
+    
+    // If MongoDB connection fails, still start server for debugging
+    if (error.name === 'MongoNetworkError' || error.name === 'MongooseServerSelectionError') {
+      console.log('⚠️  Starting server without MongoDB connection for debugging...');
+      const PORT = process.env.PORT || 5000;
+      const HOST = '0.0.0.0';
+      
+      app.listen(PORT, HOST, () => {
+        console.log(`🚀 Server running on http://localhost:${PORT} (MongoDB disconnected)`);
+      });
+    } else {
+      process.exit(1);
+    }
   }
 };
 

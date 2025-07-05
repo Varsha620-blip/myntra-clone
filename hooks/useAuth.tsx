@@ -62,10 +62,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 // API configuration
 const getApiBaseUrl = () => {
-  if (Platform.OS === 'web') {
-    return 'http://localhost:5000/api';
-  }
-  return 'http://192.168.1.100:5000/api';
+  // Always use localhost for development
+  return 'http://localhost:5000/api';
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -86,6 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const API_BASE_URL = getApiBaseUrl();
+      console.log('🔄 Checking stored auth token...');
       
       const res = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: {
@@ -95,6 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (!res.ok) {
+        console.log('❌ Stored token invalid, removing...');
         await storage.deleteItem('auth_token');
         setUser(null);
         setLoading(false);
@@ -104,13 +104,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await res.json();
 
       if (data.status === 'success' && data.data?.user) {
+        console.log('✅ User authenticated from stored token');
         setUser(data.data.user);
       } else {
         await storage.deleteItem('auth_token');
         setUser(null);
       }
     } catch (err) {
-      console.error('Error loading stored auth:', err);
+      console.error('❌ Error loading stored auth:', err);
       try {
         await storage.deleteItem('auth_token');
       } catch (deleteError) {
@@ -130,6 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const API_BASE_URL = getApiBaseUrl();
+      console.log('🔐 Attempting login to:', `${API_BASE_URL}/auth/login`);
 
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
@@ -141,9 +143,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           password: password.trim()
         }),
       });
+
+      console.log('📡 Login response status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.log('❌ Login error response:', errorText);
         
         let errorData;
         try {
@@ -166,6 +171,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const data = await response.json();
+      console.log('✅ Login successful');
 
       if (data.status === 'success' && data.data?.token && data.data?.user) {
         await storage.setItem('auth_token', data.data.token);
@@ -176,10 +182,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       Alert.alert('Error', 'Login failed. Please try again.');
       return false;
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('❌ Login error:', err);
       Alert.alert(
         'Network Error', 
-        'Could not connect to the server. Please check your internet connection and try again.'
+        'Could not connect to the server. Please make sure the backend is running and try again.'
       );
       return false;
     }
@@ -198,6 +204,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const API_BASE_URL = getApiBaseUrl();
+      console.log('📝 Attempting signup to:', `${API_BASE_URL}/auth/register`);
 
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
@@ -211,9 +218,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: data.name.trim()
         }),
       });
+
+      console.log('📡 Signup response status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.log('❌ Signup error response:', errorText);
         
         let responseData;
         try {
@@ -239,6 +249,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const responseData = await response.json();
+      console.log('✅ Signup successful');
 
       if (responseData.status === 'success' && responseData.data?.token && responseData.data?.user) {
         await storage.setItem('auth_token', responseData.data.token);
@@ -250,8 +261,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       Alert.alert('Error', 'Signup failed. Please try again.');
       return false;
     } catch (err) {
-      console.error('Signup error:', err);
-      Alert.alert('Network Error', 'Please check your connection and try again.');
+      console.error('❌ Signup error:', err);
+      Alert.alert('Network Error', 'Please check your connection and make sure the backend is running.');
       return false;
     }
   };
